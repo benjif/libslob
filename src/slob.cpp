@@ -10,24 +10,24 @@
 static bool little_endian()
 {
     short int n = 0x1;
-    char *np = (char*)&n;
+    char *np = (char *)&n;
     return (np[0] == 1);
 }
 
 template <typename T>
-static T endian_swap(T value)
+static T swap_endian(T value)
 {
     union {
         T u;
         unsigned char u8[sizeof(T)];
     } src, dst;
     src.u = value;
-    for (size_t k = 0; k < sizeof(T); k++)
-        dst.u8[k] = src.u8[sizeof(T) - k - 1];
+    for (size_t i = 0; i < sizeof(T); i++)
+        dst.u8[i] = src.u8[sizeof(T) - i - 1];
     return dst.u;
 }
 
-static std::string zlib_inflate(std::string &in)
+std::string SLOBReader::zlib_inflate(std::string &in)
 {
     z_stream inf_stream;
     memset(&inf_stream, 0, sizeof(inf_stream));
@@ -115,7 +115,7 @@ U_INT SLOBReader::read_int()
     U_INT read;
     m_fp.read(reinterpret_cast<char *>(&read), sizeof(read));
     if (little_endian())
-        read = endian_swap(read);
+        read = swap_endian(read);
     return read;
 }
 
@@ -124,7 +124,7 @@ U_LONG_LONG SLOBReader::read_long()
     U_LONG_LONG read;
     m_fp.read(reinterpret_cast<char *>(&read), sizeof(read));
     if (little_endian())
-        read = endian_swap(read);
+        read = swap_endian(read);
     return read;
 }
 
@@ -140,7 +140,7 @@ U_SHORT SLOBReader::read_short()
     U_SHORT read;
     m_fp.read(reinterpret_cast<char *>(&read), sizeof(read));
     if (little_endian())
-        read = endian_swap(read);
+        read = swap_endian(read);
     return read;
 }
 
@@ -190,5 +190,11 @@ void SLOBReader::parse_header()
     m_header.size = read_long();
     m_header.refs_offset = m_fp.tellg();
 
+    if (filesize != m_header.size)
+        throw std::runtime_error("Filesize and header size don't match");
+
+    // TODO: remove, this is for testing
     m_header.print();
+
+    std::cout << m_fp.tellg();
 }

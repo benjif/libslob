@@ -352,7 +352,6 @@ class Blob(object):
 
 def read_byte_string(f, len_spec):
     length = unpack(len_spec, f.read(calcsize(len_spec)))[0]
-    print("LENGTH: ", length)
     return f.read(length)
 
 
@@ -472,7 +471,6 @@ def read_header(f):
 
     uuid = UUID(bytes=f.read(16))
     encoding_step = read_byte_string(f, U_CHAR)
-    print(encoding_step)
     encoding = encoding_step.decode(UTF8)
     if encodings.search_function(encoding) is None:
         raise UnknownEncoding(encoding)

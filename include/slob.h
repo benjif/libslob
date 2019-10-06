@@ -44,14 +44,19 @@ static const std::unordered_map<std::string, std::string> MIME_TYPES {
 /*struct SLOBCompression {
     compress;
     decompress;
-};
+};*/
 
 struct SLOBRef {
-    key;
-    bin_index;
-    item_index;
-    fragment;
-};*/
+    std::string key;
+    U_INT bin_index;
+    U_SHORT item_index;
+    std::string fragment;
+};
+
+struct SLOBStoreItem {
+    std::string content_type_ids;
+    std::string compressed_content;
+};
 
 struct SLOBHeader {
     std::string uuid;
@@ -95,6 +100,11 @@ public:
     SLOBReader();
     ~SLOBReader();
     void open_file(const char *file);
+
+    template<typename C>
+    void for_each_reference(C);
+    template<typename C>
+    void for_each_store_item(C);
 private:
     void parse_header();
 
@@ -113,10 +123,53 @@ private:
     U_CHAR read_byte();
     U_SHORT read_short();
 
+
+    std::string zlib_inflate(std::string &in);
     SLOBReader(const SLOBReader&);
     SLOBReader& operator=(const SLOBReader&);
 
     SLOBHeader m_header;
 };
+
+template<typename C>
+void SLOBReader::for_each_reference(C call)
+{
+    unsigned int file_pos = m_fp.tellg();
+    for (; file_pos < m_header.store_offset; file_pos = m_fp.tellg()) {
+        SLOBRef cur_ref {
+            read_text(),
+            read_int(),
+            read_short(),
+            read_tiny_text()
+        };
+        call(cur_ref);
+    }
+}
+
+template<typename C>
+void SLOBReader::for_each_store_item(C call)
+{
+    unsigned int file_pos = m_fp.tellg();
+    m_fp.seekg(m_header.store_offset);
+    for (; file_pos < filesize; file_pos = m_fp.tellg()) {
+        SLOBStoreItem item;
+
+        U_INT bin_item_count = read_int();
+        char packed_content_type_ids[bin_item_count];
+        m_fp.read(packed_content_type_ids, bin_item_count);
+
+        for (unsigned int i = 0; i < bin_item_count; i++) {
+            item.content_type_ids.push_back(packed_content_type_ids[i]);
+        }
+
+        U_INT content_length = read_int();
+        item.compressed_content.resize(content_length);
+        m_fp.read(&item.compressed_content[0], content_length);
+
+        std::cout << zlib_inflate(item.compressed_content) << std::endl;
+
+        call(item);
+    }
+}
 
 #endif
