@@ -1,6 +1,15 @@
 #ifndef _UI_H
 #define _UI_H
 
-int ui_init(void);
+#include <string>
+
+class LexisUI {
+public:
+    LexisUI();
+    ~LexisUI();
+
+private:
+    std::string text_state;
+};
 
 #endif

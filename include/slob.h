@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
+#include "compression.h"
 
 #define UTF8 "utf-8"
 #define MAGIC "!-1SLOB\x1F"
@@ -72,25 +73,25 @@ struct SLOBHeader {
     // TODO: remove, this is for testing
     void print()
     {
-        std::cout << "Encoding: " << encoding << std::endl <<
-                     "Compression: " << compression << std::endl <<
-                     "Tags: " << std::endl;
+        std::cout << "Encoding: " << encoding << '\n' <<
+                     "Compression: " << compression << '\n' <<
+                     "Tags: " << '\n';
 
         for (auto const& tag : tags) {
             std::cout << "  " << tag.first <<
-                         " : " << tag.second << std::endl;
+                         " : " << tag.second << '\n';
         }
 
-        std::cout << "Content Types: " << std::endl;
+        std::cout << "Content Types: " << '\n';
 
         for (auto const& content_type : content_types) {
-            std::cout << "  " << content_type << std::endl;
+            std::cout << "  " << content_type << '\n';
         }
 
-        std::cout << "Blob Count: " << blob_count << std::endl <<
-                     "Store Offset: " << store_offset << std::endl <<
-                     "Refs Offset: " << refs_offset << std::endl <<
-                     "Size: " << size << std::endl;
+        std::cout << "Blob Count: " << blob_count << '\n' <<
+                     "Store Offset: " << store_offset << '\n' <<
+                     "Refs Offset: " << refs_offset << '\n' <<
+                     "Size: " << size << '\n';
         
     }
 };
@@ -102,14 +103,31 @@ public:
     void open_file(const char *file);
 
     template<typename C>
+    void for_each_tag(C call) const
+    {
+        for (const auto &tag_pair : m_header.tags) {
+            call(tag_pair);
+        }
+    }
+
+    template<typename C>
+    void for_each_content_type(C call) const
+    {
+        for (const auto &type : m_header.content_types) {
+            call(type);
+        }
+    }
+
+    template<typename C>
     void for_each_reference(C);
     template<typename C>
     void for_each_store_item(C);
+
+    std::string content_type(U_CHAR id);
 private:
     void parse_header();
-
-    std::ifstream m_fp;
-    unsigned int filesize;
+    void read_references();
+    void read_store_items();
 
     template<typename LenSpec>
     std::string read_byte_string();
@@ -123,19 +141,22 @@ private:
     U_CHAR read_byte();
     U_SHORT read_short();
 
-
-    std::string zlib_inflate(std::string &in);
     SLOBReader(const SLOBReader&);
     SLOBReader& operator=(const SLOBReader&);
 
     SLOBHeader m_header;
+    std::vector<SLOBRef> m_references;
+    std::vector<SLOBStoreItem> m_store_items;
+
+    std::ifstream m_fp;
+    unsigned int filesize;
 };
 
 template<typename C>
 void SLOBReader::for_each_reference(C call)
 {
     unsigned int file_pos = m_fp.tellg();
-    for (; file_pos < m_header.store_offset; file_pos = m_fp.tellg()) {
+    for (; file_pos+9 <= m_header.store_offset; file_pos = m_fp.tellg()) {
         SLOBRef cur_ref {
             read_text(),
             read_int(),
@@ -149,12 +170,14 @@ void SLOBReader::for_each_reference(C call)
 template<typename C>
 void SLOBReader::for_each_store_item(C call)
 {
-    unsigned int file_pos = m_fp.tellg();
-    m_fp.seekg(m_header.store_offset);
+    m_fp.seekg(m_header.store_offset, std::ios::beg);
+    U_LONG_LONG file_pos = m_fp.tellg();
+    std::cout << "STARTING FILE_POS: " << file_pos << '\n';
     for (; file_pos < filesize; file_pos = m_fp.tellg()) {
         SLOBStoreItem item;
 
         U_INT bin_item_count = read_int();
+        std::cout << bin_item_count << " bin items" << '\n';
         char packed_content_type_ids[bin_item_count];
         m_fp.read(packed_content_type_ids, bin_item_count);
 
@@ -166,7 +189,7 @@ void SLOBReader::for_each_store_item(C call)
         item.compressed_content.resize(content_length);
         m_fp.read(&item.compressed_content[0], content_length);
 
-        std::cout << zlib_inflate(item.compressed_content) << std::endl;
+        std::cout << zlib_inflate(item.compressed_content) << '\n';
 
         call(item);
     }

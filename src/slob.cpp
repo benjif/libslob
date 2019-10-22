@@ -1,5 +1,4 @@
 #include "slob.h"
-#include <zlib.h>
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -26,42 +25,6 @@ static T swap_endian(T value)
         dst.u8[i] = src.u8[sizeof(T) - i - 1];
     return dst.u;
 }
-
-std::string SLOBReader::zlib_inflate(std::string &in)
-{
-    z_stream inf_stream;
-    memset(&inf_stream, 0, sizeof(inf_stream));
-
-    if (inflateInit(&inf_stream) != Z_OK)
-        throw std::runtime_error("zLib inflateInit() failed");
-
-    inf_stream.next_in = (Bytef*)in.data();
-    inf_stream.avail_in = in.size();
-
-    int ret;
-    char out_buffer[32768];
-    std::string out_string;
-
-    do {
-        inf_stream.next_out = reinterpret_cast<Bytef*>(out_buffer);
-        inf_stream.avail_out = sizeof(out_buffer);
-        ret = inflate(&inf_stream, 0);
-        if (out_string.size() < inf_stream.total_out) {
-            out_string.append(out_buffer, inf_stream.total_out - out_string.size());
-        }
-    } while (ret = Z_OK);
-
-    inflateEnd(&inf_stream);
-
-    if (ret != Z_STREAM_END) {
-        std::ostringstream oss;
-        oss << "Exception occurred during zLib inflation: " << inf_stream.msg;
-        throw std::runtime_error(oss.str());
-    }
-
-    return out_string;
-}
-
 SLOBReader::SLOBReader()
 {
 }
@@ -187,6 +150,9 @@ void SLOBReader::parse_header()
 
     m_header.blob_count = read_int();
     m_header.store_offset = read_long();
+    if (m_header.store_offset > filesize)
+        throw std::runtime_error("Store offset too large");
+
     m_header.size = read_long();
     m_header.refs_offset = m_fp.tellg();
 
@@ -195,6 +161,12 @@ void SLOBReader::parse_header()
 
     // TODO: remove, this is for testing
     m_header.print();
+}
 
-    std::cout << m_fp.tellg();
+std::string SLOBReader::content_type(U_CHAR id)
+{
+    if (id >= m_header.content_types.size())
+        throw std::runtime_error("Content type ID is out of bounds");
+
+    return m_header.content_types[id];
 }

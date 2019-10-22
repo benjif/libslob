@@ -768,6 +768,7 @@ class Store(ItemList):
 
     def _read_item(self):
         bin_item_count = self._file.read_int()
+        print("Bin item count: ", bin_item_count)
         packed_content_type_ids = self._file.read(bin_item_count*U_CHAR_SIZE)
         content_type_ids = []
         for i in range(bin_item_count):
