@@ -600,6 +600,7 @@ class Slob(Sequence):
                     read_content_type_func, read_func)
 
     def get(self, blob_id):
+        print(blob_id)
         bin_index, bin_item_index = unmeld_ints(blob_id)
         return self._store.get(bin_index, bin_item_index)
 
@@ -767,6 +768,7 @@ class Store(ItemList):
         self.content_types = content_types
 
     def _read_item(self):
+        print(self._file.tell())
         bin_item_count = self._file.read_int()
         print("Bin item count: ", bin_item_count)
         packed_content_type_ids = self._file.read(bin_item_count*U_CHAR_SIZE)
@@ -775,6 +777,9 @@ class Store(ItemList):
             content_type_id = unpack(U_CHAR, packed_content_type_ids[i:i+1])[0]
             content_type_ids.append(content_type_id)
         content_length = self._file.read_int()
+        print("CNT LENGTH: ", str(content_length))
+        print()
+        print()
         content = self._file.read(content_length)
         return StoreItem(content_type_ids=content_type_ids,
                          compressed_content=content)
@@ -794,6 +799,7 @@ class Store(ItemList):
         return self.decompress(store_item.compressed_content)
 
     def get(self, bin_index, item_index):
+        print("GETTING ", str(item_index))
         content_type, store_item = self._content_type(bin_index, item_index)
         content = self._decompress(bin_index)
         count = len(store_item.content_type_ids)

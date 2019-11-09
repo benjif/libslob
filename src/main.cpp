@@ -12,11 +12,13 @@ int main(void)
                      "Item Index: " << ref.item_index << '\n';
     });*/
 
-    s_reader.for_each_store_item([&s_reader](auto &item) {
-        /*for (auto &id : item.content_type_ids) {
-            std::cout << "Type id: " << int(id) << '\n';
-        }*/
-    });
+    /*s_reader.for_each_store_item([&s_reader](auto &item) {
+        for (auto &id : item.content_type_ids) {
+            std::cout << "Content Type: " << s_reader.content_type(id) << '\n';
+        }
+    });*/
+
+    SLOBStoreItem item = s_reader.store_item(0);
 
     return 0;
 }

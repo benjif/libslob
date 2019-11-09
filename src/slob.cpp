@@ -114,7 +114,7 @@ void SLOBReader::open_file(const char *file)
         throw std::invalid_argument("Could not open SLOB file");
 
     m_fp.seekg(0, m_fp.end);
-    filesize = m_fp.tellg();
+    m_filesize = m_fp.tellg();
     m_fp.seekg(0, m_fp.beg);
 
     parse_header();
@@ -135,6 +135,7 @@ void SLOBReader::parse_header()
         throw std::runtime_error("Encoding unsupported (utf-8 only)");
 
     m_header.compression = read_tiny_text();
+    // TODO: SUPPORT LZMA2 + NO COMPRESSION
     if (m_header.compression.compare(DEFAULT_COMPRESSION) != 0)
         throw std::runtime_error("Compression unsupported (zlib only)");
 
@@ -150,23 +151,61 @@ void SLOBReader::parse_header()
 
     m_header.blob_count = read_int();
     m_header.store_offset = read_long();
-    if (m_header.store_offset > filesize)
+    if (m_header.store_offset > m_filesize)
         throw std::runtime_error("Store offset too large");
 
     m_header.size = read_long();
     m_header.refs_offset = m_fp.tellg();
 
-    if (filesize != m_header.size)
-        throw std::runtime_error("Filesize and header size don't match");
+    if (m_filesize != m_header.size)
+        throw std::runtime_error("Incorrect filesize");
+
+    read_store_item_positions();
 
     // TODO: remove, this is for testing
     m_header.print();
 }
 
-std::string SLOBReader::content_type(U_CHAR id)
+void SLOBReader::read_store_item_positions()
 {
-    if (id >= m_header.content_types.size())
+    m_fp.seekg(m_header.store_offset);
+    U_INT item_positions_count = read_int();
+
+    m_store_item_positions.resize(item_positions_count);
+
+    for (U_INT i = 0; i < item_positions_count; i++)
+        m_store_item_positions[i] = read_long();
+
+    m_store_items_data_offset = m_fp.tellg();
+}
+
+std::string SLOBReader::content_type(U_CHAR id) const
+{
+    if (id > m_header.content_types.size())
         throw std::runtime_error("Content type ID is out of bounds");
 
     return m_header.content_types[id];
+}
+
+SLOBStoreItem SLOBReader::store_item(U_INT id)
+{
+    if (id >= m_store_item_positions.size())
+        throw std::runtime_error("Store item ID out of bounds");
+
+    m_fp.seekg(m_store_items_data_offset + m_store_item_positions[id]);
+
+    SLOBStoreItem item;
+
+    U_INT bin_item_count = read_int();
+    char packed_content_type_ids[bin_item_count];
+    m_fp.read(packed_content_type_ids, bin_item_count);
+
+    for (unsigned int i = 0; i < bin_item_count; i++)
+        item.content_type_ids.push_back(packed_content_type_ids[i]);
+
+    U_INT content_length = read_int();
+    item.compressed_content.resize(content_length);
+    m_fp.read(&item.compressed_content[0], content_length);
+
+    return item;
 }
