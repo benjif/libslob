@@ -6,7 +6,7 @@
 #include <unicode/unistr.h>
 #include <unicode/ustream.h>
 
-static bool little_endian()
+bool little_endian()
 {
     short int n = 0x1;
     char *np = (char *)&n;
@@ -14,7 +14,7 @@ static bool little_endian()
 }
 
 template <typename T>
-static T swap_endian(T value)
+T swap_endian(T value)
 {
     union {
         T u;
@@ -25,6 +25,105 @@ static T swap_endian(T value)
         dst.u8[i] = src.u8[sizeof(T) - i - 1];
     return dst.u;
 }
+
+// TODO: remove, this is for testing
+std::ostream &operator<<(std::ostream &os, const SLOBHeader &h)
+{
+    os << "Encoding: " << h.encoding << '\n' <<
+        "Compression: " << h.compression << '\n' <<
+        "Tags: " << '\n';
+
+    for (auto const& tag : h.tags) {
+        os << "  " << tag.first <<
+            " : " << tag.second << '\n';
+    }
+
+    os << "Content Types: " << '\n';
+
+    for (auto const& content_type : h.content_types) {
+        os << "  " << content_type << '\n';
+    }
+
+    os << "Blob Count: " << h.blob_count << '\n' <<
+        "Store Offset: " << h.store_offset << '\n' <<
+        "Refs Offset: " << h.refs_offset << '\n' <<
+        "Size: " << h.size << '\n';
+
+    return os;
+}
+
+SLOBStorageBin::SLOBStorageBin(const SLOBStoreItem &store_item, U_INT item_count)
+    : m_store_item(store_item), m_item_count(item_count)
+{
+    m_stream.str(m_store_item.content);
+    m_item_positions.reserve(m_item_count);
+    for (U_INT i = 0; i < m_item_count; i++)
+        m_item_positions[i] = read_int();
+    m_items_data_offset = m_stream.tellg(); 
+}
+
+template <typename LenSpec>
+std::string SLOBStorageBin::read_byte_string()
+{
+    std::string length_bytes(sizeof(LenSpec), '\0');
+    m_stream.read(&length_bytes[0], sizeof(LenSpec));
+    std::reverse(length_bytes.begin(), length_bytes.end());
+
+    LenSpec length;
+    std::memcpy(&length, &length_bytes[0], sizeof(LenSpec));
+
+    std::string read_bytes(length, '\0');
+    m_stream.read(&read_bytes[0], length);
+    return read_bytes;
+}
+
+template <typename LenSpec>
+std::string SLOBStorageBin::_read_text()
+{
+    size_t max_len = calcmax(LenSpec);
+    std::string byte_string = read_byte_string<LenSpec>();
+    if (byte_string.length() == max_len) {
+        size_t terminator = byte_string.find('\0');
+        if (terminator != std::string::npos) {
+           byte_string = byte_string.substr(0, terminator);
+        }
+    }
+    return byte_string;
+}
+
+std::string SLOBStorageBin::read_tiny_text()
+{
+    return _read_text<U_CHAR>();
+}
+
+std::string SLOBStorageBin::read_text()
+{
+    return _read_text<U_SHORT>();
+}
+
+U_INT SLOBStorageBin::read_int()
+{
+    U_INT read;
+    m_stream.read(reinterpret_cast<char *>(&read), sizeof(read));
+    if (little_endian())
+        read = swap_endian(read);
+    return read;
+}
+
+std::string SLOBStorageBin::next()
+{
+    return read_text();
+}
+
+std::string SLOBStorageBin::item(U_INT index)
+{
+    if (index > m_item_count)
+        throw std::runtime_error("Item index out of bounds");
+    
+    m_stream.seekg(m_items_data_offset + m_item_positions[index]);
+    return read_text();
+}
+
 SLOBReader::SLOBReader()
 {
 }
@@ -118,6 +217,8 @@ void SLOBReader::open_file(const char *file)
     m_fp.seekg(0, m_fp.beg);
 
     parse_header();
+    read_reference_positions();
+    read_store_item_positions();
 }
 
 void SLOBReader::parse_header()
@@ -135,9 +236,9 @@ void SLOBReader::parse_header()
         throw std::runtime_error("Encoding unsupported (utf-8 only)");
 
     m_header.compression = read_tiny_text();
-    // TODO: SUPPORT LZMA2 + NO COMPRESSION
-    if (m_header.compression.compare(DEFAULT_COMPRESSION) != 0)
-        throw std::runtime_error("Compression unsupported (zlib only)");
+
+    if (!m_header.compression.empty())
+        decompress = COMPRESSION.at(m_header.compression);
 
     U_CHAR count = read_byte();
     for (U_CHAR i = 0; i < count; i++) {
@@ -159,11 +260,6 @@ void SLOBReader::parse_header()
 
     if (m_filesize != m_header.size)
         throw std::runtime_error("Incorrect filesize");
-
-    read_store_item_positions();
-
-    // TODO: remove, this is for testing
-    m_header.print();
 }
 
 void SLOBReader::read_store_item_positions()
@@ -179,6 +275,17 @@ void SLOBReader::read_store_item_positions()
     m_store_items_data_offset = m_fp.tellg();
 }
 
+void SLOBReader::read_reference_positions()
+{
+    m_fp.seekg(m_header.refs_offset);
+    U_INT reference_positions_count = read_int();
+
+    m_reference_positions.resize(reference_positions_count);
+
+    for (U_INT i = 0; i < reference_positions_count; i++)
+        m_reference_positions[i] = read_long();
+}
+
 std::string SLOBReader::content_type(U_CHAR id) const
 {
     if (id > m_header.content_types.size())
@@ -187,12 +294,27 @@ std::string SLOBReader::content_type(U_CHAR id) const
     return m_header.content_types[id];
 }
 
-SLOBStoreItem SLOBReader::store_item(U_INT id)
+SLOBReference SLOBReader::reference(U_INT id)
 {
-    if (id >= m_store_item_positions.size())
+    if (id >= m_reference_positions.size())
+        throw std::runtime_error("Reference ID out of bounds");
+
+    m_fp.seekg(m_header.refs_offset + m_reference_positions[id]);
+
+    return {
+        read_text(),
+        read_int(),
+        read_short(),
+        read_tiny_text()
+    };
+}
+
+SLOBStoreItem SLOBReader::store_item(U_INT index)
+{
+    if (index >= m_store_item_positions.size())
         throw std::runtime_error("Store item ID out of bounds");
 
-    m_fp.seekg(m_store_items_data_offset + m_store_item_positions[id]);
+    m_fp.seekg(m_store_items_data_offset + m_store_item_positions[index]);
 
     SLOBStoreItem item;
 
@@ -204,8 +326,10 @@ SLOBStoreItem SLOBReader::store_item(U_INT id)
         item.content_type_ids.push_back(packed_content_type_ids[i]);
 
     U_INT content_length = read_int();
-    item.compressed_content.resize(content_length);
-    m_fp.read(&item.compressed_content[0], content_length);
+    item.content.resize(content_length);
+    m_fp.read(&item.content[0], content_length);
+
+    item.content = decompress(item.content);
 
     return item;
 }

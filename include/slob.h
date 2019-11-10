@@ -8,14 +8,14 @@
 #include <string>
 #include <cstdint>
 #include <fstream>
+#include <sstream>
 #include <iostream>
-#include <unordered_map>
 #include "compression.h"
 
 #define UTF8 "utf-8"
 #define MAGIC "!-1SLOB\x1F"
 
-#define DEFAULT_COMPRESSION "zlib"
+#define DEFAULT_COMPRESSION "lzma2"
 
 #define U_CHAR_SIZE 1
 #define U_SHORT_SIZE 2
@@ -37,17 +37,22 @@ typedef uint32_t U_INT;
 #define MIME_TEXT "text/plain"
 #define MIME_HTML "text/html"
 
-static const std::unordered_map<std::string, std::string> MIME_TYPES {
+enum ITERATION {
+    CONTINUE,
+    BREAK,
+};
+
+bool little_endian();
+
+template <typename T>
+T swap_endian(T value);
+
+static const std::map<std::string, std::string> MIME_TYPES {
     { "html", MIME_HTML },
     { "txt", MIME_TEXT }
 };
 
-/*struct SLOBCompression {
-    compress;
-    decompress;
-};*/
-
-struct SLOBRef {
+struct SLOBReference {
     std::string key;
     U_INT bin_index;
     U_SHORT item_index;
@@ -56,7 +61,7 @@ struct SLOBRef {
 
 struct SLOBStoreItem {
     std::vector<U_CHAR> content_type_ids;
-    std::string compressed_content;
+    std::string content;
 };
 
 struct SLOBHeader {
@@ -69,58 +74,48 @@ struct SLOBHeader {
     U_LONG_LONG store_offset;
     U_LONG_LONG refs_offset;
     size_t size;
+};
 
-    // TODO: remove, this is for testing
-    void print()
-    {
-        std::cout << "Encoding: " << encoding << '\n' <<
-                     "Compression: " << compression << '\n' <<
-                     "Tags: " << '\n';
+class SLOBStorageBin {
+public:
+    SLOBStorageBin(const SLOBStoreItem &, U_INT);
+    std::string item(U_INT);
+    std::string next();
 
-        for (auto const& tag : tags) {
-            std::cout << "  " << tag.first <<
-                         " : " << tag.second << '\n';
-        }
+private:
+    template<typename LenSpec>
+    std::string read_byte_string();
+    template<typename LenSpec>
+    std::string _read_text();
 
-        std::cout << "Content Types: " << '\n';
+    std::string read_tiny_text();
+    std::string read_text();
+    U_INT read_int();
 
-        for (auto const& content_type : content_types) {
-            std::cout << "  " << content_type << '\n';
-        }
-
-        std::cout << "Blob Count: " << blob_count << '\n' <<
-                     "Store Offset: " << store_offset << '\n' <<
-                     "Refs Offset: " << refs_offset << '\n' <<
-                     "Size: " << size << '\n';
-        
-    }
+    const SLOBStoreItem &m_store_item;
+    std::istringstream m_stream;
+    std::vector<U_INT> m_item_positions;
+    size_t m_items_data_offset;
+    U_INT m_item_count;
 };
 
 class SLOBReader {
 public:
     SLOBReader();
     ~SLOBReader();
-    SLOBReader(const SLOBReader&);
-    //SLOBReader& operator=(const SLOBReader&);
 
     void open_file(const char *file);
 
     template<typename C>
-    void for_each_tag(C call) const
-    {
-        for (const auto &tag_pair : m_header.tags)
-            call(tag_pair);
-    }
+    void for_each_tag(C) const;
 
     template<typename C>
-    void for_each_content_type(C call) const
-    {
-        for (const auto &type : m_header.content_types)
-            call(type);
-    }
+    void for_each_content_type(C) const;
+    std::string content_type(U_CHAR id) const;
 
     template<typename C>
     void for_each_reference(C);
+    SLOBReference reference(U_INT id);
 
     template<typename C>
     void for_each_store_item(C);
@@ -128,11 +123,12 @@ public:
 
     template<typename C>
     void for_each_item(C);
-
-    std::string content_type(U_CHAR id) const;
 private:
     void parse_header();
     void read_store_item_positions();
+    void read_reference_positions();
+
+    std::string (*decompress)(const std::string &);
 
     template<typename LenSpec>
     std::string read_byte_string();
@@ -151,6 +147,7 @@ private:
     std::ifstream m_fp;
     size_t m_filesize;
 
+    std::vector<U_LONG_LONG> m_reference_positions;
     std::vector<U_LONG_LONG> m_store_item_positions;
     size_t m_store_items_data_offset;
 };
@@ -158,17 +155,33 @@ private:
 template<typename C>
 void SLOBReader::for_each_reference(C call)
 {
-    m_fp.seekg(m_header.refs_offset);
-    unsigned int file_pos = m_header.refs_offset;
-    for (; file_pos+9 <= m_header.store_offset; file_pos = m_fp.tellg()) {
-        SLOBRef cur_ref {
+    for (U_LONG_LONG &position : m_reference_positions) {
+        m_fp.seekg(m_header.refs_offset + position);
+        SLOBReference cur_ref {
             read_text(),
             read_int(),
             read_short(),
             read_tiny_text()
         };
-        call(cur_ref);
+        if (call(cur_ref))
+            break;
     }
+}
+
+template<typename C>
+void SLOBReader::for_each_tag(C call) const
+{
+    for (const auto &tag_pair : m_header.tags)
+        if (call(tag_pair))
+            break;
+}
+
+template<typename C>
+void SLOBReader::for_each_content_type(C call) const
+{
+    for (const auto &type : m_header.content_types)
+        if (call(type))
+            break;
 }
 
 template<typename C>
@@ -181,7 +194,6 @@ void SLOBReader::for_each_store_item(C call)
         SLOBStoreItem item;
 
         U_INT bin_item_count = read_int();
-        std::cout << bin_item_count << " bin items" << '\n';
         char packed_content_type_ids[bin_item_count];
         m_fp.read(packed_content_type_ids, bin_item_count);
 
@@ -189,20 +201,48 @@ void SLOBReader::for_each_store_item(C call)
             item.content_type_ids.push_back(packed_content_type_ids[i]);
 
         U_INT content_length = read_int();
-        std::cout << content_length << '\n';
-        item.compressed_content.resize(content_length);
-        m_fp.read(&item.compressed_content[0], content_length);
 
-        //std::cout << zlib_inflate(item.compressed_content) << '\n';
+        item.content.resize(content_length);
+        m_fp.read(&item.content[0], content_length);
 
-        call(item);
+        item.content = decompress(item.content);
+
+        if (call(item))
+            break;
     }
 }
 
 template<typename C>
 void SLOBReader::for_each_item(C call)
 {
+    m_fp.seekg(m_store_items_data_offset);
 
+    for (U_LONG_LONG &position : m_store_item_positions) {
+        m_fp.seekg(m_store_items_data_offset + position);
+        SLOBStoreItem item;
+
+        U_INT bin_item_count = read_int();
+        char packed_content_type_ids[bin_item_count];
+        m_fp.read(packed_content_type_ids, bin_item_count);
+
+        for (unsigned int i = 0; i < bin_item_count; i++)
+            item.content_type_ids.push_back(packed_content_type_ids[i]);
+
+        U_INT content_length = read_int();
+
+        item.content.resize(content_length);
+        m_fp.read(&item.content[0], content_length);
+
+        item.content = decompress(item.content);
+
+        SLOBStorageBin storage_bin(item, bin_item_count);
+
+        for (U_INT i = 0; i < bin_item_count; i++) {
+            const std::string content = storage_bin.next();
+            if (call(content))
+                return;
+        }
+    }
 }
 
 #endif

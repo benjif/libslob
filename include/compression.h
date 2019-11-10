@@ -2,8 +2,11 @@
 #define _COMPRESSION_H
 
 #include <string>
+#include <map>
 
-std::string zlib_inflate(const std::string &in);
-//std::string lzma_inflate(const std::string &in);
+typedef std::string (*decompress_function)(const std::string &);
+
+// use COMPRESSION.at(<compression type>)
+extern const std::map<std::string, decompress_function> COMPRESSION;
 
 #endif
