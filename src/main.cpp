@@ -1,33 +1,25 @@
 #include "slob.h"
+#include "dict.h"
+#include "iteration.h"
 
 int main(void)
 {
-    SLOBReader s_reader;
+    const std::string searchterm = "black hole";
 
+    SLOBReader s_reader;
     s_reader.open_file("wordnet-3.1.slob");
 
-    /*s_reader.for_each_reference([](auto &ref) {
-        std::cout << "Key: " << ref.key << '\n' <<
-                     "Bin Index: " << ref.bin_index << '\n' <<
-                     "Item Index: " << ref.item_index << '\n';
+    ItemDict dict(s_reader);
+    auto matches = dict[searchterm];
 
-        return CONTINUE;
-    });*/
-
-    /*s_reader.for_each_store_item([&s_reader](auto &item) {
-        for (auto &id : item.content_type_ids) {
-            std::cout << "Content Type: " << s_reader.content_type(id) << '\n';
-        }
-
-        return CONTINUE;
-    });*/
-
-    //SLOBStoreItem item = s_reader.store_item(2);
-    
-    s_reader.for_each_item([](auto &item) {
-        //std::cout << item << "\n\n";
-        return CONTINUE;
-    });
+    if (!matches.empty())
+        if (matches[0].key.compare(searchterm) == 0)
+            std::cout << matches[0].key << '\n';
+        else
+            for (auto match : matches)
+                std::cout << match.key << '\n';
+    else
+        std::cout << "No results" << '\n';
 
     return 0;
 }

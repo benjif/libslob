@@ -172,7 +172,6 @@ def sortkey_length(strength, word):
     coll_key = c.getSortKey(word)
     return len(coll_key) - 1 #subtract 1 for ending \x00 byte
 
-
 class MultiFileReader(io.BufferedIOBase):
 
     def __init__(self, *args):

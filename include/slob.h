@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include "iteration.h"
 #include "compression.h"
 
 #define UTF8 "utf-8"
@@ -37,16 +38,6 @@ typedef uint32_t U_INT;
 #define MIME_TEXT "text/plain"
 #define MIME_HTML "text/html"
 
-enum ITERATION {
-    CONTINUE,
-    BREAK,
-};
-
-bool little_endian();
-
-template <typename T>
-T swap_endian(T value);
-
 static const std::map<std::string, std::string> MIME_TYPES {
     { "html", MIME_HTML },
     { "txt", MIME_TEXT }
@@ -61,6 +52,11 @@ struct SLOBReference {
 
 struct SLOBStoreItem {
     std::vector<U_CHAR> content_type_ids;
+    std::string content;
+};
+
+struct SLOBItem {
+    std::string content_type;
     std::string content;
 };
 
@@ -104,7 +100,13 @@ public:
     SLOBReader();
     ~SLOBReader();
 
-    void open_file(const char *file);
+    void open_file(const char *);
+
+    std::string uuid() const { return m_header.uuid; }
+    std::string encoding() const { return m_header.encoding; }
+    std::string compression() const { return m_header.compression; }
+    U_INT blob_count() const { return m_header.blob_count; }
+    size_t size() const { return m_header.size; }
 
     template<typename C>
     void for_each_tag(C) const;
@@ -123,12 +125,13 @@ public:
 
     template<typename C>
     void for_each_item(C);
+
 private:
     void parse_header();
     void read_store_item_positions();
     void read_reference_positions();
 
-    std::string (*decompress)(const std::string &);
+    std::string (*decompress)(const std::string &) { nullptr };
 
     template<typename LenSpec>
     std::string read_byte_string();
@@ -148,6 +151,7 @@ private:
     size_t m_filesize;
 
     std::vector<U_LONG_LONG> m_reference_positions;
+    size_t m_reference_data_offset;
     std::vector<U_LONG_LONG> m_store_item_positions;
     size_t m_store_items_data_offset;
 };
@@ -156,7 +160,7 @@ template<typename C>
 void SLOBReader::for_each_reference(C call)
 {
     for (U_LONG_LONG &position : m_reference_positions) {
-        m_fp.seekg(m_header.refs_offset + position);
+        m_fp.seekg(m_reference_data_offset + position);
         SLOBReference cur_ref {
             read_text(),
             read_int(),
@@ -205,7 +209,8 @@ void SLOBReader::for_each_store_item(C call)
         item.content.resize(content_length);
         m_fp.read(&item.content[0], content_length);
 
-        item.content = decompress(item.content);
+        if (decompress)
+            item.content = decompress(item.content);
 
         if (call(item))
             break;
@@ -219,27 +224,32 @@ void SLOBReader::for_each_item(C call)
 
     for (U_LONG_LONG &position : m_store_item_positions) {
         m_fp.seekg(m_store_items_data_offset + position);
-        SLOBStoreItem item;
+        SLOBStoreItem store_item;
 
         U_INT bin_item_count = read_int();
         char packed_content_type_ids[bin_item_count];
         m_fp.read(packed_content_type_ids, bin_item_count);
 
         for (unsigned int i = 0; i < bin_item_count; i++)
-            item.content_type_ids.push_back(packed_content_type_ids[i]);
+            store_item.content_type_ids.push_back(packed_content_type_ids[i]);
 
         U_INT content_length = read_int();
 
-        item.content.resize(content_length);
-        m_fp.read(&item.content[0], content_length);
+        store_item.content.resize(content_length);
+        m_fp.read(&store_item.content[0], content_length);
 
-        item.content = decompress(item.content);
+        if (decompress)
+            store_item.content = decompress(store_item.content);
 
-        SLOBStorageBin storage_bin(item, bin_item_count);
+        SLOBStorageBin storage_bin(store_item, bin_item_count);
 
         for (U_INT i = 0; i < bin_item_count; i++) {
             const std::string content = storage_bin.next();
-            if (call(content))
+            SLOBItem item = {
+                content_type(store_item.content_type_ids[i]),
+                content,
+            };
+            if (call(item))
                 return;
         }
     }

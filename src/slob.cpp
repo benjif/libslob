@@ -6,7 +6,7 @@
 #include <unicode/unistr.h>
 #include <unicode/ustream.h>
 
-bool little_endian()
+static bool little_endian()
 {
     short int n = 0x1;
     char *np = (char *)&n;
@@ -14,7 +14,7 @@ bool little_endian()
 }
 
 template <typename T>
-T swap_endian(T value)
+static T swap_endian(T value)
 {
     union {
         T u;
@@ -206,9 +206,9 @@ U_SHORT SLOBReader::read_short()
     return read;
 }
 
-void SLOBReader::open_file(const char *file)
+void SLOBReader::open_file(const char *filename)
 {
-    m_fp.open(file, std::ios::in | std::ios::binary);
+    m_fp.open(filename, std::ios::in | std::ios::binary);
     if (!m_fp)
         throw std::invalid_argument("Could not open SLOB file");
 
@@ -284,6 +284,8 @@ void SLOBReader::read_reference_positions()
 
     for (U_INT i = 0; i < reference_positions_count; i++)
         m_reference_positions[i] = read_long();
+
+    m_reference_data_offset = m_fp.tellg();
 }
 
 std::string SLOBReader::content_type(U_CHAR id) const
@@ -329,7 +331,8 @@ SLOBStoreItem SLOBReader::store_item(U_INT index)
     item.content.resize(content_length);
     m_fp.read(&item.content[0], content_length);
 
-    item.content = decompress(item.content);
+    if (decompress)
+        item.content = decompress(item.content);
 
     return item;
 }
