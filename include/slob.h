@@ -44,6 +44,7 @@ static const std::map<std::string, std::string> MIME_TYPES {
 };
 
 struct SLOBReference {
+    // TODO: SWAP CONTENT STORAGE TO UCHAR/UNICODESTRING
     std::string key;
     U_INT bin_index;
     U_SHORT item_index;
@@ -52,11 +53,13 @@ struct SLOBReference {
 
 struct SLOBStoreItem {
     std::vector<U_CHAR> content_type_ids;
+    // TODO: SWAP CONTENT STORAGE TO UCHAR/UNICODESTRING
     std::string content;
 };
 
 struct SLOBItem {
     std::string content_type;
+    // TODO: SWAP CONTENT STORAGE TO UCHAR/UNICODESTRING
     std::string content;
 };
 
@@ -115,6 +118,7 @@ public:
     void for_each_content_type(C) const;
     std::string content_type(U_CHAR id) const;
 
+    // TODO: CACHE REFERENCES
     template<typename C>
     void for_each_reference(C);
     SLOBReference reference(U_INT id);

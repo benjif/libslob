@@ -10,8 +10,11 @@
 CollationKeyList::CollationKeyList(SLOBReader &sr)
     : m_slob_reader(sr)
 {
+    // TODO: handle all UErrorCode errors
     UErrorCode status = U_ZERO_ERROR;
     m_collator = Collator::createInstance(Locale(""), status);
+    m_collator->setStrength(Collator::PRIMARY);
+    m_collator->setAttribute(UCOL_ALTERNATE_HANDLING, UCOL_SHIFTED, status);
 }
 
 CollationKeyList::~CollationKeyList()
@@ -51,11 +54,9 @@ std::vector<SLOBReference> ItemDict::operator[](const std::string &term)
     UnicodeString u_string(u_content);
     UErrorCode status = U_ZERO_ERROR;
 
-    m_collator->setStrength(Collator::PRIMARY);
     auto maxlength = m_collator->getSortKey(u_string, nullptr, 0);
     uint8_t *sortkey = new uint8_t[maxlength];
     m_collator->getSortKey(u_string, sortkey, maxlength-1);
-    m_collator->setAttribute(UCOL_ALTERNATE_HANDLING, UCOL_SHIFTED, status);
 
     std::vector<SLOBReference> matches;
 
@@ -70,7 +71,7 @@ std::vector<SLOBReference> ItemDict::operator[](const std::string &term)
     return matches;
 }
 
-void strip_html_tags(std::string &content)
+/*void strip_html_tags(std::string &content)
 {
     size_t pos_start = 0, pos_end = 0;
     for (size_t pos = 0; pos < content.length(); pos++) {
@@ -89,4 +90,4 @@ void strip_html_tags(std::string &content)
             pos = pos_start - 1;
         }
     }
-}
+}*/

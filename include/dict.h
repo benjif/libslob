@@ -7,11 +7,10 @@
 #include <unicode/utf8.h>
 #include <unicode/sortkey.h>
 #include "slob.h"
-#include "iteration.h"
 
 #define MAX_SORTKEY_LEN 256
 
-void strip_html_tags(std::string &);
+//void strip_html_tags(std::string &);
 
 class CollationKeyList {
 public:
