@@ -10,16 +10,24 @@
 CollationKeyList::CollationKeyList(SLOBReader &sr)
     : m_slob_reader(sr)
 {
-    // TODO: handle all UErrorCode errors
+    // TODO: handle all UErrorCode errors properly
     UErrorCode status = U_ZERO_ERROR;
+    u_init(&status);
+    if (U_FAILURE(status))
+        throw std::runtime_error("ICU init failed");
     m_collator = Collator::createInstance(Locale(""), status);
+    if (U_FAILURE(status))
+        throw std::runtime_error("ICU error has occurred");
     m_collator->setStrength(Collator::PRIMARY);
     m_collator->setAttribute(UCOL_ALTERNATE_HANDLING, UCOL_SHIFTED, status);
+    if (U_FAILURE(status))
+        throw std::runtime_error("ICU error has occurred");
 }
 
 CollationKeyList::~CollationKeyList()
 {
     delete m_collator;
+    u_cleanup();
 }
 
 Collator *CollationKeyList::collator() const
@@ -52,7 +60,6 @@ std::vector<SLOBReference> ItemDict::operator[](const std::string &term)
     UChar u_content[term.length()+1];
     u_charsToUChars(term.c_str(), u_content, term.length()+1);
     UnicodeString u_string(u_content);
-    UErrorCode status = U_ZERO_ERROR;
 
     auto maxlength = m_collator->getSortKey(u_string, nullptr, 0);
     uint8_t *sortkey = new uint8_t[maxlength];

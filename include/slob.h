@@ -78,7 +78,7 @@ struct SLOBHeader {
 class SLOBStorageBin {
 public:
     SLOBStorageBin(const SLOBStoreItem &, U_INT);
-    std::string item(U_INT);
+    std::string item(U_SHORT);
     std::string next();
 
 private:
@@ -116,19 +116,20 @@ public:
 
     template<typename C>
     void for_each_content_type(C) const;
-    std::string content_type(U_CHAR id) const;
+    std::string content_type(U_CHAR) const;
 
     // TODO: CACHE REFERENCES
     template<typename C>
     void for_each_reference(C);
-    SLOBReference reference(U_INT id);
+    SLOBReference reference(U_INT);
 
     template<typename C>
     void for_each_store_item(C);
-    SLOBStoreItem store_item(U_INT id);
+    SLOBStoreItem store_item(U_INT);
 
     template<typename C>
     void for_each_item(C);
+    std::string item(U_INT, U_SHORT);
 
 private:
     void parse_header();
@@ -150,7 +151,6 @@ private:
     U_SHORT read_short();
 
     SLOBHeader m_header;
-
     std::ifstream m_fp;
     size_t m_filesize;
 

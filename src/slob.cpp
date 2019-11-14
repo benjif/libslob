@@ -115,13 +115,17 @@ std::string SLOBStorageBin::next()
     return read_text();
 }
 
-std::string SLOBStorageBin::item(U_INT index)
+std::string SLOBStorageBin::item(U_SHORT index)
 {
     if (index > m_item_count)
         throw std::runtime_error("Item index out of bounds");
-    
+
     m_stream.seekg(m_items_data_offset + m_item_positions[index]);
-    return read_text();
+    U_INT length = read_int();
+    std::string buffer;
+    buffer.reserve(length);
+    m_stream.read(&buffer[0], length);
+    return buffer;
 }
 
 SLOBReader::SLOBReader()
@@ -136,14 +140,16 @@ SLOBReader::~SLOBReader()
 template <typename LenSpec>
 std::string SLOBReader::read_byte_string()
 {
-    std::string length_bytes(sizeof(LenSpec), '\0');
+    std::string length_bytes;
+    length_bytes.reserve(sizeof(LenSpec));
     m_fp.read(&length_bytes[0], sizeof(LenSpec));
     std::reverse(length_bytes.begin(), length_bytes.end());
 
     LenSpec length;
     std::memcpy(&length, &length_bytes[0], sizeof(LenSpec));
 
-    std::string read_bytes(length, '\0');
+    std::string read_bytes;
+    read_bytes.reserve(length);
     m_fp.read(&read_bytes[0], length);
     return read_bytes;
 }
@@ -155,9 +161,8 @@ std::string SLOBReader::_read_text()
     std::string byte_string = read_byte_string<LenSpec>();
     if (byte_string.length() == max_len) {
         size_t terminator = byte_string.find('\0');
-        if (terminator != std::string::npos) {
+        if (terminator != std::string::npos)
            byte_string = byte_string.substr(0, terminator);
-        }
     }
     return byte_string;
 }
@@ -296,12 +301,12 @@ std::string SLOBReader::content_type(U_CHAR id) const
     return m_header.content_types[id];
 }
 
-SLOBReference SLOBReader::reference(U_INT id)
+SLOBReference SLOBReader::reference(U_INT index)
 {
-    if (id >= m_reference_positions.size())
-        throw std::runtime_error("Reference ID out of bounds");
+    if (index >= m_reference_positions.size())
+        throw std::runtime_error("Reference index out of bounds");
 
-    m_fp.seekg(m_header.refs_offset + m_reference_positions[id]);
+    m_fp.seekg(m_header.refs_offset + m_reference_positions[index]);
 
     return {
         read_text(),
@@ -314,7 +319,7 @@ SLOBReference SLOBReader::reference(U_INT id)
 SLOBStoreItem SLOBReader::store_item(U_INT index)
 {
     if (index >= m_store_item_positions.size())
-        throw std::runtime_error("Store item ID out of bounds");
+        throw std::runtime_error("Store item index out of bounds");
 
     m_fp.seekg(m_store_items_data_offset + m_store_item_positions[index]);
 
@@ -335,4 +340,36 @@ SLOBStoreItem SLOBReader::store_item(U_INT index)
         item.content = decompress(item.content);
 
     return item;
+}
+
+std::string SLOBReader::item(U_INT bin_index, U_SHORT bin_item_index)
+{
+    if (bin_index >= m_store_item_positions.size())
+        throw std::runtime_error("Bin index out of bounds");
+
+    m_fp.seekg(m_store_items_data_offset + m_store_item_positions[bin_index]);
+
+    SLOBStoreItem store_item;
+
+    U_INT bin_item_count = read_int();
+    char packed_content_type_ids[bin_item_count];
+    m_fp.read(packed_content_type_ids, bin_item_count);
+
+    for (unsigned int i = 0; i < bin_item_count; i++)
+        store_item.content_type_ids.push_back(packed_content_type_ids[i]);
+
+    U_INT content_length = read_int();
+
+    store_item.content.resize(content_length);
+    m_fp.read(&store_item.content[0], content_length);
+
+    if (decompress)
+        store_item.content = decompress(store_item.content);
+
+    SLOBStorageBin storage_bin(store_item, bin_item_count);
+
+    //for (int i = 0; i < bin_item_count; i++)
+    //    std::cout << storage_bin.next() << '\n';
+
+    return storage_bin.item(bin_item_index);
 }

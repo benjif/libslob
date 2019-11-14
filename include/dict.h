@@ -5,7 +5,9 @@
 #include <string>
 #include <unicode/coll.h>
 #include <unicode/utf8.h>
+#include <unicode/uclean.h>
 #include <unicode/sortkey.h>
+#include <unicode/errorcode.h>
 #include "slob.h"
 
 #define MAX_SORTKEY_LEN 256
@@ -27,7 +29,7 @@ public:
 private:
     Collator *m_collator;
     SLOBReader &m_slob_reader;
-    int32_t m_maxlength { -1 };
+    int32_t m_maxlength { MAX_SORTKEY_LEN };
 };
 
 template <typename C>
