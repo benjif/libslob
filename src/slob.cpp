@@ -123,7 +123,7 @@ std::string SLOBStorageBin::item(U_SHORT index)
     m_stream.seekg(m_items_data_offset + m_item_positions[index]);
     U_INT length = read_int();
     std::string buffer;
-    buffer.reserve(length);
+    buffer.resize(length);
     m_stream.read(&buffer[0], length);
     return buffer;
 }
@@ -140,16 +140,14 @@ SLOBReader::~SLOBReader()
 template <typename LenSpec>
 std::string SLOBReader::read_byte_string()
 {
-    std::string length_bytes;
-    length_bytes.reserve(sizeof(LenSpec));
+    std::string length_bytes(sizeof(LenSpec), '\0');
     m_fp.read(&length_bytes[0], sizeof(LenSpec));
     std::reverse(length_bytes.begin(), length_bytes.end());
 
     LenSpec length;
     std::memcpy(&length, &length_bytes[0], sizeof(LenSpec));
 
-    std::string read_bytes;
-    read_bytes.reserve(length);
+    std::string read_bytes(length, '\0');
     m_fp.read(&read_bytes[0], length);
     return read_bytes;
 }
