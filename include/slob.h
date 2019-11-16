@@ -137,6 +137,7 @@ private:
     void parse_header();
     void read_store_item_positions();
     void read_reference_positions();
+    void read_references();
 
     std::string (*decompress)(const std::string &) { nullptr };
 
@@ -156,8 +157,10 @@ private:
     std::ifstream m_fp;
     size_t m_filesize;
 
+    std::vector<SLOBReference> m_references;
     std::vector<U_LONG_LONG> m_reference_positions;
     size_t m_reference_data_offset;
+
     std::vector<U_LONG_LONG> m_store_item_positions;
     size_t m_store_items_data_offset;
 };
@@ -165,17 +168,9 @@ private:
 template<typename C>
 void SLOBReader::for_each_reference(C call)
 {
-    for (U_LONG_LONG &position : m_reference_positions) {
-        m_fp.seekg(m_reference_data_offset + position);
-        SLOBReference cur_ref {
-            read_text(),
-            read_int(),
-            read_short(),
-            read_tiny_text()
-        };
-        if (call(cur_ref))
+    for (auto &ref : m_references)
+        if (call(ref))
             break;
-    }
 }
 
 template<typename C>

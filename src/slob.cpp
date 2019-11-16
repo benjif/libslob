@@ -225,6 +225,7 @@ void SLOBReader::open_file(const char *filename)
 
     parse_header();
     read_reference_positions();
+    read_references();
     read_store_item_positions();
 }
 
@@ -293,6 +294,20 @@ void SLOBReader::read_reference_positions()
         m_reference_positions.push_back(read_long());
 
     m_reference_data_offset = m_fp.tellg();
+}
+
+void SLOBReader::read_references()
+{
+    m_references.reserve(m_reference_positions.size());
+    for (U_LONG_LONG &position : m_reference_positions) {
+        m_fp.seekg(m_reference_data_offset + position);
+        m_references.push_back({
+            read_text(),
+            read_int(),
+            read_short(),
+            read_tiny_text()
+        });
+    }
 }
 
 std::string SLOBReader::content_type(U_CHAR id) const
