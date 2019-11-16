@@ -121,7 +121,6 @@ public:
     void for_each_content_type(C) const;
     std::string content_type(U_CHAR) const;
 
-    // TODO: CACHE REFERENCES
     template<typename C>
     void for_each_reference(C);
     SLOBReference reference(U_INT);

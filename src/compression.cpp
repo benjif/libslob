@@ -23,7 +23,7 @@ const std::map<std::string, std::string (*)(const std::string &)> COMPRESSION = 
   
             lzma_ret ret = lzma_raw_decoder(&strm, filters);
             if (ret != LZMA_OK)
-                throw std::runtime_error("lzma_raw_decoder failed");
+                throw std::runtime_error("LZMA: lzma_raw_decoder failed");
   
             lzma_action action = LZMA_RUN;
   
@@ -51,27 +51,27 @@ const std::map<std::string, std::string (*)(const std::string &)> COMPRESSION = 
                     const std::string errmsg = [&ret]() {
                         switch(ret) {
                         case LZMA_MEM_ERROR:
-                            return "Memory allocation failed";
+                            return "LZMA: Memory allocation failed";
                             break;
                         case LZMA_FORMAT_ERROR:
-                            return "Input is not in the .xz format";
+                            return "LZMA: Input is not in the .xz format";
                             break;
                         case LZMA_OPTIONS_ERROR:
-                            return "Unsupported compression options";
+                            return "LZMA: Unsupported compression options";
                             break;
                         case LZMA_DATA_ERROR:
-                            return "Compressed data is corrupt";
+                            return "LZMA: Compressed data is corrupt";
                             break;
                         case LZMA_BUF_ERROR:
-                            return "Compressed data is truncated or corrupt";
+                            return "LZMA: Compressed data is truncated or corrupt";
                             break;
                         default:
-                            return "Unknown error";
+                            return "LZMA: Unknown error";
                             break;
                         }
                     }();
                     std::cout << errmsg << '\n';
-                    throw std::runtime_error("Error during LZMA2 decompression");
+                    throw std::runtime_error("LZMA: Error during LZMA2 decompression");
                 }
   
                 if (out_string.size() < strm.total_out)
@@ -91,7 +91,7 @@ const std::map<std::string, std::string (*)(const std::string &)> COMPRESSION = 
             memset(&inf_stream, 0, sizeof(inf_stream));
   
             if (inflateInit(&inf_stream) != Z_OK)
-                throw std::runtime_error("zLib inflateInit() failed");
+                throw std::runtime_error("ZLIB: zLib inflateInit() failed");
   
             inf_stream.next_in = (Bytef*)in.data();
             inf_stream.avail_in = in.size();
@@ -113,7 +113,7 @@ const std::map<std::string, std::string (*)(const std::string &)> COMPRESSION = 
   
             if (ret != Z_STREAM_END) {
                 std::ostringstream oss;
-                oss << "Exception occurred during zLib inflation: " << inf_stream.msg;
+                oss << "ZLIB: Exception occurred during zLib inflation: " << inf_stream.msg;
                 throw std::runtime_error(oss.str());
             }
   

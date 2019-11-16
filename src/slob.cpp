@@ -122,7 +122,7 @@ std::string SLOBStorageBin::next()
 std::string SLOBStorageBin::item(U_SHORT index)
 {
     if (index > m_item_count)
-        throw std::runtime_error("Item index out of bounds");
+        throw std::runtime_error("SLOB: SLOBStorageBin::item() index out of bounds");
 
     m_stream.seekg(m_items_data_offset + m_item_positions[index]);
     U_INT length = read_int();
@@ -217,7 +217,7 @@ void SLOBReader::open_file(const char *filename)
 {
     m_fp.open(filename, std::ios::in | std::ios::binary);
     if (!m_fp)
-        throw std::invalid_argument("Could not open SLOB file");
+        throw std::invalid_argument("SLOB: Could not open SLOB file");
 
     m_fp.seekg(0, m_fp.end);
     m_filesize = m_fp.tellg();
@@ -235,13 +235,13 @@ void SLOBReader::parse_header()
     m_fp.read(&read_magic[0], 8);
 
     if (read_magic.compare(MAGIC) != 0)
-        throw std::runtime_error("Incorrect magic text value");
+        throw std::runtime_error("SLOB: Incorrect magic text value");
 
     m_fp.read(&(m_header.uuid[0]), 16);
 
     m_header.encoding = read_byte_string<U_CHAR>();
     if (m_header.encoding.compare(UTF8) != 0)
-        throw std::runtime_error("Encoding unsupported (utf-8 only)");
+        throw std::runtime_error("SLOB: Encoding unsupported (utf-8 only)");
 
     m_header.compression = read_tiny_text();
 
@@ -261,13 +261,13 @@ void SLOBReader::parse_header()
     m_header.blob_count = read_int();
     m_header.store_offset = read_long();
     if (m_header.store_offset > m_filesize)
-        throw std::runtime_error("Store offset too large");
+        throw std::runtime_error("SLOB: Store offset too large");
 
     m_header.size = read_long();
     m_header.refs_offset = m_fp.tellg();
 
     if (m_filesize != m_header.size)
-        throw std::runtime_error("Incorrect filesize");
+        throw std::runtime_error("SLOB: Incorrect filesize");
 }
 
 void SLOBReader::read_store_item_positions()
@@ -313,30 +313,23 @@ void SLOBReader::read_references()
 std::string SLOBReader::content_type(U_CHAR id) const
 {
     if (id > m_header.content_types.size())
-        throw std::runtime_error("Content type ID is out of bounds");
+        throw std::runtime_error("SLOB: SLOBReader::content_type() ID is out of bounds");
 
     return m_header.content_types[id];
 }
 
 SLOBReference SLOBReader::reference(U_INT index)
 {
-    if (index >= m_reference_positions.size())
-        throw std::runtime_error("Reference index out of bounds");
+    if (index >= m_references.size())
+        throw std::runtime_error("SLOB: SLOBReader::reference() index out of bounds");
 
-    m_fp.seekg(m_header.refs_offset + m_reference_positions[index]);
-
-    return {
-        read_text(),
-        read_int(),
-        read_short(),
-        read_tiny_text()
-    };
+    return m_references[index];
 }
 
 SLOBStoreItem SLOBReader::store_item(U_INT index)
 {
     if (index >= m_store_item_positions.size())
-        throw std::runtime_error("Store item index out of bounds");
+        throw std::runtime_error("SLOB: SLOBReader::store_item() index out of bounds");
 
     m_fp.seekg(m_store_items_data_offset + m_store_item_positions[index]);
 
@@ -362,7 +355,7 @@ SLOBStoreItem SLOBReader::store_item(U_INT index)
 std::string SLOBReader::item(U_INT bin_index, U_SHORT bin_item_index)
 {
     if (bin_index >= m_store_item_positions.size())
-        throw std::runtime_error("Bin index out of bounds");
+        throw std::runtime_error("SLOB: SLOBReader::item() Bin index out of bounds");
 
     m_fp.seekg(m_store_items_data_offset + m_store_item_positions[bin_index]);
 
