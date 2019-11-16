@@ -4,15 +4,15 @@ C++ library providing support for reading from Slob (sorted list of blobs) dicti
 
 ## Background
 
-Slob is a read-only, compressed format that was created for the (https://github.com/itkach/aard2-android)[Aard dictionary reader]. The keys are sorted using the (https://www.unicode.org/reports/tr10/)[Unicode Collation Algorithm].
+Slob is a read-only, compressed format that was created for the [Aard dictionary reader](https://github.com/itkach/aard2-android). The keys are sorted using the [Unicode Collation Algorithm](https://www.unicode.org/reports/tr10/).
 
 ## Dependencies
 
 `sudo apt install liblzma-dev zlib1g-dev libicu-dev`
 
-- (https://tukaani.org/xz/)[liblzma]
-- (https://www.zlib.net)[zlib]
-- (http://site.icu-project.org/home)[icu]
+- [liblzma](https://tukaani.org/xz/)
+- [zlib](https://www.zlib.net)
+- [icu](http://site.icu-project.org/home)
 
 ## License
 
