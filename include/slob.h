@@ -111,6 +111,7 @@ public:
     std::string encoding() const { return m_header.encoding; }
     std::string compression() const { return m_header.compression; }
     U_INT blob_count() const { return m_header.blob_count; }
+    U_INT ref_count() const { return m_references.size(); }
     size_t size() const { return m_header.size; }
 
     template<typename C>

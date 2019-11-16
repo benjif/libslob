@@ -33,23 +33,17 @@ private:
 template <typename C>
 void CollationKeyList::for_each_key(C call)
 {
+    uint8_t *sortkey = new uint8_t[MAX_SORTKEY_LEN];
     m_slob_reader.for_each_reference([&](auto &ref) {
         UChar u_content[ref.key.length()+1];
         u_charsToUChars(ref.key.c_str(), u_content, ref.key.length()+1);
         UnicodeString u_string(u_content);
-        uint8_t *sortkey;
-        if (m_maxlength != -1)
-            sortkey = new uint8_t[m_maxlength];
-        else
-            sortkey = new uint8_t[MAX_SORTKEY_LEN];
         m_collator->getSortKey(u_string, sortkey, m_maxlength-1);
-        if (call(sortkey, ref)) {
-            delete[] sortkey;
+        if (call(sortkey, ref))
             return ITERATION::BREAK;
-        }
-        delete[] sortkey;
         return ITERATION::CONTINUE;
     });
+    delete[] sortkey;
 }
 
 class ItemDict {
