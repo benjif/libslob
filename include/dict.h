@@ -12,8 +12,6 @@
 
 #define MAX_SORTKEY_LEN 256
 
-//void strip_html_tags(std::string &);
-
 class CollationKeyList {
 public:
     CollationKeyList(SLOBReader &);
@@ -47,10 +45,10 @@ void CollationKeyList::for_each_key(C call)
         m_collator->getSortKey(u_string, sortkey, m_maxlength-1);
         if (call(sortkey, ref)) {
             delete[] sortkey;
-            return BREAK;
+            return ITERATION::BREAK;
         }
         delete[] sortkey;
-        return CONTINUE;
+        return ITERATION::CONTINUE;
     });
 }
 

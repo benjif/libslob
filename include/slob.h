@@ -105,6 +105,8 @@ public:
 
     void open_file(const char *);
 
+    void print_header_info() const;
+
     std::string uuid() const { return m_header.uuid; }
     std::string encoding() const { return m_header.encoding; }
     std::string compression() const { return m_header.compression; }

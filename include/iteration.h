@@ -1,9 +1,11 @@
 #ifndef ITERATION_H_
 #define ITERATION_H_
 
-enum ITERATION {
+namespace ITERATION {
+enum STATEMENT {
     CONTINUE,
     BREAK,
 };
+}
 
 #endif

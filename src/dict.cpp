@@ -71,30 +71,9 @@ std::vector<SLOBReference> ItemDict::operator[](const std::string &term)
     m_key_list.for_each_key([&](auto &other_key, auto &ref) {
         if (uint8cmp(sortkey, other_key, maxlength-1))
             matches.push_back(ref);
-        return CONTINUE;
+        return ITERATION::CONTINUE;
     });
 
     delete[] sortkey;
     return matches;
 }
-
-/*void strip_html_tags(std::string &content)
-{
-    size_t pos_start = 0, pos_end = 0;
-    for (size_t pos = 0; pos < content.length(); pos++) {
-        if (content[pos] == '<') {
-            pos_start = pos;
-            for (; pos < content.length(); pos++) {
-                if (content[pos] == '>') {
-                    pos_end = pos;
-                    break;
-                }
-            }
-        }
-        if (pos_end != 0) {
-            content.erase(pos_start, pos_end - pos_start + 1);
-            pos_start = pos_end = 0;
-            pos = pos_start - 1;
-        }
-    }
-}*/

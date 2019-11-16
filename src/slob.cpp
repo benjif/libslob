@@ -26,7 +26,6 @@ static T swap_endian(T value)
     return dst.u;
 }
 
-// TODO: remove, this is for testing
 std::ostream &operator<<(std::ostream &os, const SLOBHeader &h)
 {
     os << "Encoding: " << h.encoding << '\n' <<
@@ -52,13 +51,19 @@ std::ostream &operator<<(std::ostream &os, const SLOBHeader &h)
     return os;
 }
 
+void SLOBReader::print_header_info() const
+{
+    std::cout << m_header;
+}
+
 SLOBStorageBin::SLOBStorageBin(const SLOBStoreItem &store_item, U_INT item_count)
     : m_store_item(store_item), m_item_count(item_count)
 {
     m_stream.str(m_store_item.content);
     m_item_positions.reserve(m_item_count);
     for (U_INT i = 0; i < m_item_count; i++)
-        m_item_positions[i] = read_int();
+        m_item_positions.push_back(read_int());
+        //m_item_positions[i] = read_int();
     m_items_data_offset = m_stream.tellg(); 
 }
 
@@ -270,10 +275,11 @@ void SLOBReader::read_store_item_positions()
     m_fp.seekg(m_header.store_offset);
     U_INT item_positions_count = read_int();
 
-    m_store_item_positions.resize(item_positions_count);
+    m_store_item_positions.reserve(item_positions_count);
 
     for (U_INT i = 0; i < item_positions_count; i++)
-        m_store_item_positions[i] = read_long();
+        m_store_item_positions.push_back(read_long());
+        //m_store_item_positions[i] = read_long();
 
     m_store_items_data_offset = m_fp.tellg();
 }
@@ -283,10 +289,11 @@ void SLOBReader::read_reference_positions()
     m_fp.seekg(m_header.refs_offset);
     U_INT reference_positions_count = read_int();
 
-    m_reference_positions.resize(reference_positions_count);
+    m_reference_positions.reserve(reference_positions_count);
 
     for (U_INT i = 0; i < reference_positions_count; i++)
-        m_reference_positions[i] = read_long();
+        m_reference_positions.push_back(read_long());
+        //m_reference_positions[i] = read_long();
 
     m_reference_data_offset = m_fp.tellg();
 }
