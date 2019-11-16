@@ -63,7 +63,6 @@ SLOBStorageBin::SLOBStorageBin(const SLOBStoreItem &store_item, U_INT item_count
     m_item_positions.reserve(m_item_count);
     for (U_INT i = 0; i < m_item_count; i++)
         m_item_positions.push_back(read_int());
-        //m_item_positions[i] = read_int();
     m_items_data_offset = m_stream.tellg(); 
 }
 
@@ -279,7 +278,6 @@ void SLOBReader::read_store_item_positions()
 
     for (U_INT i = 0; i < item_positions_count; i++)
         m_store_item_positions.push_back(read_long());
-        //m_store_item_positions[i] = read_long();
 
     m_store_items_data_offset = m_fp.tellg();
 }
@@ -293,7 +291,6 @@ void SLOBReader::read_reference_positions()
 
     for (U_INT i = 0; i < reference_positions_count; i++)
         m_reference_positions.push_back(read_long());
-        //m_reference_positions[i] = read_long();
 
     m_reference_data_offset = m_fp.tellg();
 }
@@ -372,9 +369,6 @@ std::string SLOBReader::item(U_INT bin_index, U_SHORT bin_item_index)
         store_item.content = decompress(store_item.content);
 
     SLOBStorageBin storage_bin(store_item, bin_item_count);
-
-    //for (int i = 0; i < bin_item_count; i++)
-    //    std::cout << storage_bin.next() << '\n';
 
     return storage_bin.item(bin_item_index);
 }
