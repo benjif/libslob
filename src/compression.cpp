@@ -8,6 +8,7 @@
 
 const std::map<std::string, std::string (*)(const std::string &)> COMPRESSION = {
     {
+        // LZMA2 decompression function
         "lzma2",
         [](const std::string &in) -> std::string {
             lzma_stream strm = LZMA_STREAM_INIT;
@@ -85,6 +86,7 @@ const std::map<std::string, std::string (*)(const std::string &)> COMPRESSION = 
         },
     },
     {
+        // ZLIB decompression function
         "zlib",
         [](const std::string &in) -> std::string {
             z_stream inf_stream;

@@ -6,7 +6,8 @@
 
 typedef std::string (*decompress_function)(const std::string &);
 
-// use COMPRESSION.at(<compression type>)
+// DECOMPRESSION FUNCTIONS
+// COMPRESSION.at(<compression type>)
 extern const std::map<std::string, decompress_function> COMPRESSION;
 
 #endif

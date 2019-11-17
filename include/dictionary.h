@@ -17,8 +17,11 @@ public:
     CollationKeyList(SLOBReader &);
     ~CollationKeyList();
 
+    // Set max collation key comparison length.
+    // By default, this is 256 characters.
     void set_maxlength(int32_t);
 
+    // Iterate over collation keys.
     template <typename C>
     void for_each_key(C);
 
@@ -49,6 +52,8 @@ void CollationKeyList::for_each_key(C call)
 class ItemDict {
 public:
     ItemDict(SLOBReader &);
+
+    // Search SLOB references for key.
     std::vector<SLOBReference> operator[](const std::string &term);
 
 private:

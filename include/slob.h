@@ -44,7 +44,6 @@ static const std::map<std::string, std::string> MIME_TYPES {
 };
 
 struct SLOBReference {
-    // TODO: SWAP CONTENT STORAGE TO UCHAR/UNICODESTRING
     std::string key;
     U_INT bin_index;
     U_SHORT item_index;
@@ -53,13 +52,11 @@ struct SLOBReference {
 
 struct SLOBStoreItem {
     std::vector<U_CHAR> content_type_ids;
-    // TODO: SWAP CONTENT STORAGE TO UCHAR/UNICODESTRING
     std::string content;
 };
 
 struct SLOBItem {
     std::string content_type;
-    // TODO: SWAP CONTENT STORAGE TO UCHAR/UNICODESTRING
     std::string content;
 };
 
@@ -103,8 +100,10 @@ public:
     SLOBReader();
     ~SLOBReader();
 
+    // Open SLOB file for parsing.
     void open_file(const char *);
 
+    // Print SLOB header info.
     void print_header_info() const;
 
     std::string uuid() const { return m_header.uuid; }
@@ -117,20 +116,28 @@ public:
     template<typename C>
     void for_each_tag(C) const;
 
+    // Iterate over SLOB header content types.
     template<typename C>
     void for_each_content_type(C) const;
+    // Access SLOB header content types.
     std::string content_type(U_CHAR) const;
 
+    // Iterate over all SLOB references.
     template<typename C>
     void for_each_reference(C);
     SLOBReference reference(U_INT);
 
+    // Iterate over all SLOB store items.
     template<typename C>
     void for_each_store_item(C);
     SLOBStoreItem store_item(U_INT);
 
+    // Iterate over all SLOB items.
     template<typename C>
     void for_each_item(C);
+
+    // Access specific SLOB items using the bin 
+    // index, and item index within the bin.
     std::string item(U_INT, U_SHORT);
 
 private:
