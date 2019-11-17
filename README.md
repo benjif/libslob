@@ -12,11 +12,22 @@ You can find a collection of dictionaries in the Slob format [here](https://gith
 
 ## Dependencies
 
+- cmake >= 2.8
 - [icu](http://site.icu-project.org/home)
 - [liblzma](https://tukaani.org/xz/)
 - [zlib](https://www.zlib.net)
 
-`sudo apt install liblzma-dev zlib1g-dev libicu-dev`
+`sudo apt install cmake liblzma-dev zlib1g-dev libicu-dev`
+
+## Install
+
+```
+mkdir cmake
+cd cmake
+cmake ..
+make
+sudo make install
+```
 
 ## License
 
