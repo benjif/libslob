@@ -29,6 +29,22 @@ make
 sudo make install
 ```
 
+## Usage
+
+### Reading
+
+```c++
+SLOBReader s_reader;
+s_reader.open("wordnet-3.1.slob");
+
+ItemDict dict(s_reader);
+
+auto matches = dict["searchterm"];
+
+if (matches.size() > 0)
+  ...
+```
+
 ## License
 
 BSD 2-clause license.
