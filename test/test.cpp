@@ -4,12 +4,7 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " <search term>\n";
-        return 0;
-    }
-
-    const std::string searchterm = argv[1];
+    const std::string searchterm = "black hole";
 
     SLOBReader s_reader;
     s_reader.open_file("dictionaries/wordnet-3.1.slob");
