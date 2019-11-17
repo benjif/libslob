@@ -1,6 +1,5 @@
-#include "slob.h"
-#include "dict.h"
-#include "iteration.h"
+#include <slob/slob.h>
+#include <slob/dictionary.h>
 
 int main(int argc, char **argv)
 {

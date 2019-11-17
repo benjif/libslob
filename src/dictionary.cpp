@@ -4,8 +4,8 @@
 #include <climits>
 #include <iostream>
 #include <algorithm>
-#include "dict.h"
 #include "iteration.h"
+#include "dictionary.h"
 
 CollationKeyList::CollationKeyList(SLOBReader &sr)
     : m_slob_reader(sr)
