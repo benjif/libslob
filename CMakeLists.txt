@@ -15,7 +15,7 @@ add_library(${PROJECT_NAME} SHARED ${SOURCES})
 target_link_libraries(slob lzma z ICU::uc ICU::io)
 add_definitions(-DU_CHARSET_IS_UTF8)
 
-install(TARGETS ${PROJECT_NAME} DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 
 file(GLOB HEADERS include/*.h)
 install(FILES ${HEADERS} DESTINATION include/${PROJECT_NAME})
