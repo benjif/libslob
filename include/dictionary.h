@@ -49,9 +49,9 @@ void CollationKeyList::for_each_key(C call)
     delete[] sortkey;
 }
 
-class ItemDict {
+class SLOBDict {
 public:
-    ItemDict(SLOBReader &);
+    SLOBDict(SLOBReader &);
 
     // Search SLOB references for key.
     std::vector<SLOBReference> operator[](const std::string &term);

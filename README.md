@@ -37,7 +37,7 @@ sudo make install
 SLOBReader s_reader;
 s_reader.open("wordnet-3.1.slob");
 
-ItemDict dict(s_reader);
+SLOBDict dict(s_reader);
 
 auto matches = dict["searchterm"];
 

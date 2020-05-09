@@ -39,7 +39,7 @@ void CollationKeyList::set_maxlength(int32_t len)
     m_maxlength = len;
 }
 
-ItemDict::ItemDict(SLOBReader &sr)
+SLOBDict::SLOBDict(SLOBReader &sr)
     : m_slob_reader(sr), m_key_list(sr)
 {
 }
@@ -52,7 +52,7 @@ static bool uint8cmp(uint8_t *a, uint8_t *b, size_t n)
     return true;
 }
 
-std::vector<SLOBReference> ItemDict::operator[](const std::string &term)
+std::vector<SLOBReference> SLOBDict::operator[](const std::string &term)
 {
     Collator *m_collator = m_key_list.collator();
 

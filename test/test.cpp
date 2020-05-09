@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     s_reader.open_file("dictionaries/wordnet-3.1.slob");
 
     // Wrap parsed object with dictionary-like interface.
-    ItemDict dict(s_reader);
+    SLOBDict dict(s_reader);
 
     // Search for "black hole". This returns a SLOBReference.
     // In order to obtain the actual item content, use
